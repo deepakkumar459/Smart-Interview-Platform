@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Problem — TalentIQ</title>
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico"/>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg"/>
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body style="overflow:hidden">
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">Talent<span>IQ</span></a>
+
+  <div style="display:flex;align-items:center;gap:0.5rem">
+    <button id="prev-btn" class="btn btn-ghost btn-sm">← Prev</button>
+    <span id="problem-nav-title" style="font-size:0.85rem;color:var(--text-muted);font-family:var(--font-mono)">—</span>
+    <button id="next-btn" class="btn btn-ghost btn-sm">Next →</button>
+  </div>
+
+  <div class="nav-right">
+    <div id="nav-auth" style="display:flex;gap:0.5rem">
+      <a href="login.html" class="btn btn-ghost btn-sm">Sign In</a>
+    </div>
+    <div id="nav-user" style="display:none;align-items:center;gap:0.75rem">
+      <span style="font-size:0.875rem;color:var(--text-secondary)">👋 <span id="nav-username"></span></span>
+      <button class="btn btn-ghost btn-sm logout-btn">Sign Out</button>
+    </div>
+  </div>
+</nav>
+
+<!-- SPLIT LAYOUT -->
+<div class="problem-layout">
+
+  <!-- LEFT: PROBLEM DESCRIPTION -->
+  <div class="problem-panel">
+    <div class="problem-tabs">
+      <button class="problem-tab active" data-tab="description">Description</button>
+      <button class="problem-tab" data-tab="submissions">My Submissions</button>
+    </div>
+
+    <!-- Description Tab -->
+    <div class="problem-content" id="tab-description">
+      <div class="problem-header">
+        <div class="problem-number" id="p-number">#1</div>
+        <div class="problem-name" id="p-title">Loading...</div>
+        <div class="problem-meta">
+          <span id="p-difficulty" class="badge badge-easy">Easy</span>
+          <span id="p-acceptance" style="font-size:0.8rem;color:var(--text-muted)"></span>
+          <span id="p-solved-badge" style="display:none" class="badge badge-accent">✅ Solved</span>
+        </div>
+      </div>
+
+      <div class="problem-description" id="p-description"></div>
+
+      <div id="p-examples"></div>
+
+      <div style="margin-top:1.25rem">
+        <strong style="font-size:0.875rem;color:var(--text-primary)">Constraints:</strong>
+        <ul class="constraints-list" id="p-constraints"></ul>
+      </div>
+
+      <div id="p-tags-section" style="margin-top:1.25rem"></div>
+    </div>
+
+    <!-- Submissions Tab -->
+    <div class="problem-content" id="tab-submissions" style="display:none">
+      <h3 style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:1rem">My Submissions</h3>
+      <div id="submissions-list">
+        <p style="color:var(--text-muted);font-size:0.875rem">No submissions yet. Write some code and hit Submit!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: EDITOR -->
+  <div class="editor-panel">
+
+    <div class="editor-toolbar">
+      <select id="lang-select" class="lang-select">
+        <option value="javascript">JavaScript</option>
+        <option value="python">Python</option>
+        <option value="cpp">C++</option>
+      </select>
+
+      <div class="editor-actions">
+        <button id="run-btn" class="btn btn-ghost btn-sm">▶ Run</button>
+        <button id="submit-btn" class="btn btn-primary btn-sm">⚡ Submit</button>
+      </div>
+    </div>
+
+    <!-- Monaco Editor -->
+    <div id="editor-container"></div>
+
+    <!-- Output -->
+    <div class="output-panel">
+      <div class="output-tabs">
+        <button class="output-tab active" data-out="output">Output</button>
+        <button class="output-tab" data-out="testcases">Test Cases</button>
+      </div>
+      <div class="output-content" id="output-content">
+        <span style="color:var(--text-muted)">Run your code to see results here...</span>
+      </div>
+      <div class="output-content" id="testcases-content" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/problems.js"></script>
+<script src="js/judge.js"></script>
+
+<!-- Monaco Editor -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+<script>
+let editor, currentProblem, currentLang = 'javascript';
+const params    = new URLSearchParams(window.location.search);
+const problemId = parseInt(params.get('id') || '1');
+
+// ── Load Monaco ──
+require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+require(['vs/editor/editor.main'], function () {
+  editor = monaco.editor.create(document.getElementById('editor-container'), {
+    value: '// Loading...',
+    language: 'javascript',
+    theme: 'vs-dark',
+    fontSize: 14,
+    fontFamily: "'Space Mono', monospace",
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    lineNumbers: 'on',
+    automaticLayout: true,
+    padding: { top: 12 },
+    renderLineHighlight: 'all',
+    smoothScrolling: true,
+  });
+
+  // Custom dark theme
+  monaco.editor.defineTheme('talentiq', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#111118',
+      'editor.lineHighlightBackground': '#1e1e2a',
+      'editorLineNumber.foreground': '#55556a',
+      'editorLineNumber.activeForeground': '#8888aa',
+      'editor.selectionBackground': '#6c63ff44',
+    }
+  });
+  monaco.editor.setTheme('talentiq');
+
+  loadProblem(problemId);
+});
+
+// ── Load problem ──
+async function loadProblem(id) {
+  allProblems = await fetchProblems();
+  currentProblem = allProblems.find(p => p.id === id) || allProblems[0];
+  if (!currentProblem) return;
+
+  // Update nav
+  const idx = allProblems.findIndex(p => p.id === currentProblem.id);
+  document.getElementById('problem-nav-title').textContent = `${idx + 1} / ${allProblems.length}`;
+  document.getElementById('prev-btn').onclick = () => { if (idx > 0) goToProblem(allProblems[idx - 1].id); };
+  document.getElementById('next-btn').onclick = () => { if (idx < allProblems.length - 1) goToProblem(allProblems[idx + 1].id); };
+
+  // Fill description
+  document.getElementById('p-number').textContent = `#${currentProblem.id}`;
+  document.getElementById('p-title').textContent   = currentProblem.title;
+  document.title = `${currentProblem.title} — TalentIQ`;
+
+  const diff = currentProblem.difficulty.toLowerCase();
+  const diffEl = document.getElementById('p-difficulty');
+  diffEl.textContent = currentProblem.difficulty;
+  diffEl.className = `badge badge-${diff}`;
+
+  document.getElementById('p-acceptance').textContent = `Acceptance: ${currentProblem.acceptance}%`;
+  document.getElementById('p-description').innerHTML  = `<p>${currentProblem.description}</p>`;
+
+  // Examples
+  const examplesEl = document.getElementById('p-examples');
+  examplesEl.innerHTML = (currentProblem.examples || []).map((ex, i) => `
+    <div style="margin-top:1rem">
+      <div class="example-label">Example ${i + 1}</div>
+      <div class="example-block">
+        <div class="line"><span class="key">Input: </span><span class="val">${ex.input}</span></div>
+        <div class="line"><span class="key">Output: </span><span class="val">${ex.output}</span></div>
+        ${ex.explanation ? `<div class="line" style="margin-top:0.25rem"><span class="key">Explanation: </span>${ex.explanation}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  // Constraints
+  const constraintsEl = document.getElementById('p-constraints');
+  constraintsEl.innerHTML = (currentProblem.constraints || []).map(c => `<li>${c}</li>`).join('');
+
+  // Tags
+  document.getElementById('p-tags-section').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
+      ${(currentProblem.tags || []).map(t => `<span class="tag-pill" style="font-size:0.8rem;padding:0.25rem 0.6rem">${t}</span>`).join('')}
+    </div>
+  `;
+
+  // Load starter code
+  setLanguage(currentLang);
+
+  // Check if solved
+  const user = getCurrentUser();
+  if (user) {
+    const solved = await getSolvedProblems(user.uid);
+    if (solved.includes(currentProblem.id)) {
+      document.getElementById('p-solved-badge').style.display = 'inline-flex';
+    }
+    loadSubmissions(user.uid, currentProblem.id);
+  }
+}
+
+// ── Set language and starter code ──
+function setLanguage(lang) {
+  currentLang = lang;
+  const code = currentProblem?.starterCode?.[lang] || `// Write your ${lang} solution here\n`;
+  if (editor) {
+    const monacoLang = lang === 'cpp' ? 'cpp' : lang;
+    monaco.editor.setModelLanguage(editor.getModel(), monacoLang);
+    editor.setValue(code);
+  }
+}
+
+// ── Language switcher ──
+document.getElementById('lang-select').addEventListener('change', e => {
+  setLanguage(e.target.value);
+});
+
+// ── Tab switching (description / submissions) ──
+document.querySelectorAll('.problem-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.problem-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-description').style.display  = tab.dataset.tab === 'description'  ? 'block' : 'none';
+    document.getElementById('tab-submissions').style.display  = tab.dataset.tab === 'submissions'   ? 'block' : 'none';
+  });
+});
+
+// ── Output tab switching ──
+document.querySelectorAll('.output-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.output-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('output-content').style.display    = tab.dataset.out === 'output'    ? 'block' : 'none';
+    document.getElementById('testcases-content').style.display = tab.dataset.out === 'testcases' ? 'block' : 'none';
+  });
+});
+
+// ── Run button ──
+document.getElementById('run-btn').addEventListener('click', async () => {
+  const code = editor.getValue();
+  const outputEl = document.getElementById('output-content');
+  outputEl.innerHTML = '<div class="spinner"></div> <span style="color:var(--text-muted)">Running code...</span>';
+
+  try {
+    const stdin = (currentProblem.testCases?.[0]?.input) || '';
+    const result = await submitToJudge(code, currentLang, stdin);
+    displayResult(result, outputEl);
+  } catch (err) {
+    outputEl.innerHTML = `<div class="output-error">❌ ${err.message}</div>
+      <div style="margin-top:0.5rem;color:var(--text-muted);font-size:0.75rem">
+        Make sure your Judge0 API key is set in js/judge.js
+      </div>`;
+  }
+});
+
+// ── Submit button ──
+document.getElementById('submit-btn').addEventListener('click', async () => {
+  const user = getCurrentUser();
+  if (!user) {
+    showToast('Please sign in to submit solutions', 'error');
+    return;
+  }
+
+  const code = editor.getValue();
+  const outputEl = document.getElementById('output-content');
+  outputEl.innerHTML = '<div class="spinner"></div> <span style="color:var(--text-muted)">Judging your solution...</span>';
+  document.getElementById('submit-btn').disabled = true;
+
+  try {
+    const testCases = currentProblem.testCases || [];
+    if (testCases.length === 0) {
+      // No test cases — just run and save
+      const result = await submitToJudge(code, currentLang, '');
+      const { passed } = displayResult(result, outputEl);
+      const status = passed ? 'Accepted' : 'Wrong Answer';
+      await saveSubmission(user.uid, currentProblem.id, currentProblem, code, currentLang, status, result);
+      showToast(passed ? '🎉 Accepted!' : '❌ Wrong Answer', passed ? 'success' : 'error');
+    } else {
+      // Run all test cases
+      let allPassed = true;
+      const results = [];
+      for (const tc of testCases) {
+        const result = await submitToJudge(code, currentLang, tc.input);
+        const output = result.stdout?.trim();
+        const passed = output === tc.expected;
+        if (!passed) allPassed = false;
+        results.push({ input: tc.input, expected: tc.expected, output, passed, result });
+      }
+
+      const status = allPassed ? 'Accepted' : 'Wrong Answer';
+      const lastResult = results[results.length - 1].result;
+      displayResult(lastResult, outputEl);
+
+      if (!allPassed) {
+        const failed = results.find(r => !r.passed);
+        outputEl.innerHTML += `
+          <div style="margin-top:0.75rem;color:var(--red)">
+            <strong>Failed Test Case:</strong><br>
+            Input: <code>${failed.input}</code><br>
+            Expected: <code>${failed.expected}</code><br>
+            Got: <code>${failed.output || '(empty)'}</code>
+          </div>`;
+      }
+
+      await saveSubmission(user.uid, currentProblem.id, currentProblem, code, currentLang, status, lastResult);
+      showToast(allPassed ? '🎉 All test cases passed!' : '❌ Wrong Answer', allPassed ? 'success' : 'error');
+
+      if (allPassed) {
+        document.getElementById('p-solved-badge').style.display = 'inline-flex';
+      }
+    }
+  } catch (err) {
+    outputEl.innerHTML = `<div class="output-error">❌ ${err.message}</div>`;
+  } finally {
+    document.getElementById('submit-btn').disabled = false;
+  }
+});
+
+// ── Load user submissions ──
+async function loadSubmissions(userId, problemId) {
+  try {
+    const snapshot = await db.collection('submissions')
+      .where('userId', '==', userId)
+      .where('problemId', '==', problemId)
+      .orderBy('timestamp', 'desc')
+      .limit(10)
+      .get();
+
+    const el = document.getElementById('submissions-list');
+    if (snapshot.empty) { el.innerHTML = '<p style="color:var(--text-muted);font-size:0.875rem">No submissions yet.</p>'; return; }
+
+    el.innerHTML = snapshot.docs.map(doc => {
+      const s = doc.data();
+      const isAccepted = s.status === 'Accepted';
+      const time = s.timestamp?.toDate().toLocaleDateString() || '-';
+      return `
+        <div class="submission-item">
+          <div>
+            <div class="${isAccepted ? 'sub-status-accepted' : 'sub-status-wrong'}">${isAccepted ? '✅' : '❌'} ${s.status}</div>
+            <div class="sub-lang">${s.language} · ${s.runtime || '-'}s · ${s.memory || '-'}KB</div>
+          </div>
+          <div class="sub-time">${time}</div>
+        </div>
+      `;
+    }).join('');
+  } catch(err) { console.error(err); }
+}
+
+function goToProblem(id) {
+  window.location.href = `problem.html?id=${id}`;
+}
+
+function showToast(message, type = 'success') {
+  let toast = document.getElementById('toast');
+  if (!toast) { toast = document.createElement('div'); toast.id = 'toast'; toast.className = 'toast'; document.body.appendChild(toast); }
+  toast.innerHTML = `${type === 'success' ? '✅' : '❌'} ${message}`;
+  toast.className = `toast ${type}`;
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>

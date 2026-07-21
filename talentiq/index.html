@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TalentIQ — Sharpen Your Coding Skills</title>
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico"/>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg"/>
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">Talent<span>IQ</span></a>
+
+  <div class="nav-links">
+    <a href="index.html" class="nav-link active">Problems</a>
+    <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+    <a href="profile.html" class="nav-link">Profile</a>
+  </div>
+
+  <div class="nav-right">
+    <!-- Shown when not logged in -->
+    <div id="nav-auth" style="display:flex;gap:0.5rem">
+      <a href="login.html" class="btn btn-ghost btn-sm">Sign In</a>
+      <a href="register.html" class="btn btn-primary btn-sm">Get Started</a>
+    </div>
+    <!-- Shown when logged in -->
+    <div id="nav-user" style="display:none;align-items:center;gap:0.75rem">
+      <span style="font-size:0.875rem;color:var(--text-secondary)">👋 <span id="nav-username"></span></span>
+      <a href="profile.html" class="btn btn-ghost btn-sm">Profile</a>
+      <button class="btn btn-ghost btn-sm logout-btn">Sign Out</button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag">🧠 Level Up Your Problem-Solving</div>
+  <h1>Master DSA with<br><span class="highlight">TalentIQ</span></h1>
+  <p>Practice coding problems, compete on leaderboards, and track your growth. Built for students and developers who want to get better — fast.</p>
+  <div style="display:flex;justify-content:center;gap:1rem;flex-wrap:wrap">
+    <a href="register.html" class="btn btn-primary btn-lg">Start Practicing →</a>
+    <a href="#problems" class="btn btn-ghost btn-lg">Browse Problems</a>
+  </div>
+</section>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-value" id="stat-total">10</div>
+    <div class="stat-label">Total Problems</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value" id="stat-easy" style="color:var(--green)">4</div>
+    <div class="stat-label">Easy</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value" id="stat-medium" style="color:var(--yellow)">3</div>
+    <div class="stat-label">Medium</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value" id="stat-hard" style="color:var(--red)">3</div>
+    <div class="stat-label">Hard</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-value" id="stat-solved" style="color:var(--accent)">0</div>
+    <div class="stat-label">You Solved</div>
+  </div>
+</div>
+
+<!-- PROBLEMS TABLE -->
+<section class="problems-section" id="problems">
+  <div class="section-header">
+    <h2 class="section-title">All Problems</h2>
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="easy" style="color:var(--green)">Easy</button>
+      <button class="filter-btn" data-filter="medium" style="color:var(--yellow)">Medium</button>
+      <button class="filter-btn" data-filter="hard" style="color:var(--red)">Hard</button>
+    </div>
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="search-input" placeholder="Search problems..."/>
+    </div>
+  </div>
+
+  <table class="problems-table">
+    <thead>
+      <tr>
+        <th style="width:40px"></th>
+        <th style="width:60px">#</th>
+        <th>Title</th>
+        <th style="width:100px">Difficulty</th>
+        <th style="width:100px">Acceptance</th>
+      </tr>
+    </thead>
+    <tbody id="problems-tbody">
+      <tr>
+        <td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted)">
+          <div class="spinner"></div>
+          <span style="margin-left:0.75rem">Loading problems...</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/problems.js"></script>
+<script>
+  // Init when auth state is known
+  auth.onAuthStateChanged(() => initProblemsPage());
+</script>
+</body>
+</html>

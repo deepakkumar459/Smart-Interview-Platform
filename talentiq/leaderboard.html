@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Leaderboard — TalentIQ</title>
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico"/>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg"/>
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">Talent<span>IQ</span></a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Problems</a>
+    <a href="leaderboard.html" class="nav-link active">Leaderboard</a>
+    <a href="profile.html" class="nav-link">Profile</a>
+  </div>
+  <div class="nav-right">
+    <div id="nav-auth" style="display:flex;gap:0.5rem">
+      <a href="login.html" class="btn btn-ghost btn-sm">Sign In</a>
+      <a href="register.html" class="btn btn-primary btn-sm">Get Started</a>
+    </div>
+    <div id="nav-user" style="display:none;align-items:center;gap:0.75rem">
+      <span style="font-size:0.875rem;color:var(--text-secondary)">👋 <span id="nav-username"></span></span>
+      <a href="profile.html" class="btn btn-ghost btn-sm">Profile</a>
+      <button class="btn btn-ghost btn-sm logout-btn">Sign Out</button>
+    </div>
+  </div>
+</nav>
+
+<div class="leaderboard-section">
+
+  <div class="lb-header">
+    <h1>🏆 Leaderboard</h1>
+    <p>Top coders ranked by score. Keep solving to climb the ranks!</p>
+  </div>
+
+  <!-- PODIUM (Top 3) -->
+  <div class="lb-podium" id="podium">
+    <div style="text-align:center;color:var(--text-muted);font-size:0.875rem;padding:2rem">
+      Loading top coders...
+    </div>
+  </div>
+
+  <!-- TABLE (Rest) -->
+  <table class="lb-table">
+    <thead>
+      <tr>
+        <th style="width:60px">Rank</th>
+        <th>User</th>
+        <th>Score</th>
+        <th>Solved</th>
+        <th>Easy</th>
+        <th>Medium</th>
+        <th>Hard</th>
+      </tr>
+    </thead>
+    <tbody id="lb-tbody">
+      <tr>
+        <td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">
+          <div class="spinner"></div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+const AVATARS = ['🧠', '🔥', '⚡', '🦄', '🐉', '🎯', '🚀', '💎', '🌟', '🏆'];
+
+async function loadLeaderboard() {
+  try {
+    const snapshot = await db.collection('users')
+      .orderBy('score', 'desc')
+      .limit(50)
+      .get();
+
+    const users = snapshot.docs.map((doc, i) => ({ ...doc.data(), uid: doc.id, rank: i + 1 }));
+
+    // Render podium (top 3)
+    const podiumEl = document.getElementById('podium');
+    if (users.length >= 3) {
+      const medals = [
+        { cls: 'second', rank: '🥈', user: users[1] },
+        { cls: 'first',  rank: '🥇', user: users[0] },
+        { cls: 'third',  rank: '🥉', user: users[2] },
+      ];
+      podiumEl.innerHTML = medals.map(m => `
+        <div class="podium-item ${m.cls}">
+          <div class="podium-rank">${m.rank}</div>
+          <div class="podium-avatar">${m.user.avatar || '🧠'}</div>
+          <div class="podium-name">${m.user.name || 'Anonymous'}</div>
+          <div class="podium-score">${m.user.score || 0} pts</div>
+          <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem">${(m.user.solved || []).length} solved</div>
+        </div>
+      `).join('');
+    } else {
+      podiumEl.style.display = 'none';
+    }
+
+    // Render table (rank 4+)
+    const tbody = document.getElementById('lb-tbody');
+    const rest = users.slice(3);
+
+    if (rest.length === 0 && users.length <= 3) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-muted)">Be the first to make the full leaderboard!</td></tr>`;
+    } else {
+      tbody.innerHTML = (rest.length > 0 ? rest : []).map(u => `
+        <tr>
+          <td><span class="rank-num">#${u.rank}</span></td>
+          <td>
+            <div class="user-cell">
+              <div class="user-avatar-sm">${u.avatar || '🧠'}</div>
+              <div class="user-name">${u.name || 'Anonymous'}</div>
+            </div>
+          </td>
+          <td><span class="score-val">${u.score || 0}</span></td>
+          <td><span class="solved-val">${(u.solved || []).length}</span></td>
+          <td style="color:var(--green);font-family:var(--font-mono)">${u.easyCount || 0}</td>
+          <td style="color:var(--yellow);font-family:var(--font-mono)">${u.mediumCount || 0}</td>
+          <td style="color:var(--red);font-family:var(--font-mono)">${u.hardCount || 0}</td>
+        </tr>
+      `).join('');
+
+      if (rest.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-muted)">Top 3 shown above!</td></tr>`;
+      }
+    }
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('lb-tbody').innerHTML =
+      `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--red)">Failed to load leaderboard. Check Firestore rules.</td></tr>`;
+  }
+}
+
+auth.onAuthStateChanged(() => loadLeaderboard());
+</script>
+</body>
+</html>

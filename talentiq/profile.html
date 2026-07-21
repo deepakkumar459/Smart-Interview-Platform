@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile — TalentIQ</title>
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico"/>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg"/>
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png"/>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">Talent<span>IQ</span></a>
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Problems</a>
+    <a href="leaderboard.html" class="nav-link">Leaderboard</a>
+    <a href="profile.html" class="nav-link active">Profile</a>
+  </div>
+  <div class="nav-right">
+    <div id="nav-auth" style="display:flex;gap:0.5rem">
+      <a href="login.html" class="btn btn-ghost btn-sm">Sign In</a>
+    </div>
+    <div id="nav-user" style="display:none;align-items:center;gap:0.75rem">
+      <span style="font-size:0.875rem;color:var(--text-secondary)">👋 <span id="nav-username"></span></span>
+      <button class="btn btn-ghost btn-sm logout-btn">Sign Out</button>
+    </div>
+  </div>
+</nav>
+
+<div class="profile-layout">
+
+  <!-- SIDEBAR -->
+  <div class="profile-sidebar">
+    <div class="card profile-card">
+      <div class="profile-avatar" id="p-avatar">🧠</div>
+      <div class="profile-username" id="p-name">Loading...</div>
+      <div class="profile-email" id="p-email"></div>
+      <div class="profile-joined" id="p-joined"></div>
+
+      <div class="profile-stats-grid">
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="ps-score">0</div>
+          <div class="profile-stat-label">Total Score</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="ps-solved">0</div>
+          <div class="profile-stat-label">Solved</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="ps-submissions">0</div>
+          <div class="profile-stat-label">Submissions</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val" id="ps-rank" style="color:var(--yellow)">—</div>
+          <div class="profile-stat-label">Global Rank</div>
+        </div>
+      </div>
+
+      <div style="margin-top:1.25rem">
+        <button class="btn btn-outline btn-full logout-btn">Sign Out</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div style="font-size:0.85rem;font-weight:600;margin-bottom:0.75rem">Problems Solved</div>
+      <div class="solved-breakdown">
+        <div class="solved-row">
+          <span class="solved-row-label" style="color:var(--green)">Easy</span>
+          <span class="solved-row-count" style="color:var(--green)" id="ps-easy">0</span>
+        </div>
+        <div class="solved-row">
+          <span class="solved-row-label" style="color:var(--yellow)">Medium</span>
+          <span class="solved-row-count" style="color:var(--yellow)" id="ps-medium">0</span>
+        </div>
+        <div class="solved-row">
+          <span class="solved-row-label" style="color:var(--red)">Hard</span>
+          <span class="solved-row-count" style="color:var(--red)" id="ps-hard">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="profile-main">
+
+    <!-- Activity Heatmap -->
+    <div class="card">
+      <div style="font-size:0.9rem;font-weight:600;margin-bottom:0.5rem">Activity Heatmap</div>
+      <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.75rem">Last 52 weeks</div>
+      <div class="activity-heatmap" id="heatmap"></div>
+      <div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.75rem;font-size:0.75rem;color:var(--text-muted)">
+        Less
+        <div style="width:10px;height:10px;border-radius:2px;background:var(--bg-hover)"></div>
+        <div style="width:10px;height:10px;border-radius:2px;background:rgba(108,99,255,0.3)"></div>
+        <div style="width:10px;height:10px;border-radius:2px;background:rgba(108,99,255,0.55)"></div>
+        <div style="width:10px;height:10px;border-radius:2px;background:var(--accent)"></div>
+        More
+      </div>
+    </div>
+
+    <!-- Recent Submissions -->
+    <div class="card" style="margin-top:1rem">
+      <div style="font-size:0.9rem;font-weight:600;margin-bottom:1rem">Recent Submissions</div>
+      <div class="recent-submissions" id="recent-subs">
+        <div style="color:var(--text-muted);font-size:0.875rem">Loading submissions...</div>
+      </div>
+    </div>
+
+    <!-- Badges -->
+    <div class="card" style="margin-top:1rem">
+      <div style="font-size:0.9rem;font-weight:600;margin-bottom:1rem">Badges</div>
+      <div id="badges-list" style="display:flex;flex-wrap:wrap;gap:0.75rem">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+// ── Generate heatmap ──
+function generateHeatmap(submissionDates = []) {
+  const heatmap = document.getElementById('heatmap');
+  const cells = 52 * 7;
+  const today = new Date();
+  const dateSet = new Set(submissionDates.map(d => d.toDateString?.() || d));
+
+  let html = '';
+  for (let i = cells - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toDateString();
+    const hasActivity = dateSet.has(key);
+    const level = hasActivity ? 'l' + (Math.floor(Math.random() * 3) + 2) : '';
+    html += `<div class="heat-cell ${level}" title="${d.toLocaleDateString()}"></div>`;
+  }
+  heatmap.innerHTML = html;
+}
+
+// ── Load profile ──
+async function loadProfile(user) {
+  try {
+    const doc = await db.collection('users').doc(user.uid).get();
+    const data = doc.exists ? doc.data() : {};
+
+    document.getElementById('p-avatar').textContent = data.avatar || '🧠';
+    document.getElementById('p-name').textContent   = data.name || user.displayName || 'Anonymous';
+    document.getElementById('p-email').textContent  = data.email || user.email || '';
+
+    if (data.joined?.toDate) {
+      document.getElementById('p-joined').textContent = 'Joined ' + data.joined.toDate().toLocaleDateString('en-US', { year:'numeric', month:'long' });
+    }
+
+    document.getElementById('ps-score').textContent       = data.score || 0;
+    document.getElementById('ps-solved').textContent      = (data.solved || []).length;
+    document.getElementById('ps-submissions').textContent = data.submissions || 0;
+    document.getElementById('ps-easy').textContent        = data.easyCount   || 0;
+    document.getElementById('ps-medium').textContent      = data.mediumCount || 0;
+    document.getElementById('ps-hard').textContent        = data.hardCount   || 0;
+
+    // Global rank
+    const rankSnap = await db.collection('users').where('score', '>', (data.score || 0)).get();
+    document.getElementById('ps-rank').textContent = '#' + (rankSnap.size + 1);
+
+    // Badges
+    generateBadges(data);
+
+    // Recent submissions
+    const subSnap = await db.collection('submissions')
+      .where('userId', '==', user.uid)
+      .orderBy('timestamp', 'desc')
+      .limit(8)
+      .get();
+
+    const subEl = document.getElementById('recent-subs');
+    if (subSnap.empty) {
+      subEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.875rem">No submissions yet. Start solving!</div>';
+    } else {
+      subEl.innerHTML = subSnap.docs.map(doc => {
+        const s = doc.data();
+        const isAccepted = s.status === 'Accepted';
+        const time = s.timestamp?.toDate().toLocaleDateString() || '-';
+        return `
+          <div class="submission-item">
+            <div style="display:flex;align-items:center;gap:0.75rem">
+              <div class="${isAccepted ? 'sub-status-accepted' : 'sub-status-wrong'}">${isAccepted ? '✅' : '❌'}</div>
+              <div>
+                <a href="problem.html?id=${s.problemId}" class="sub-title" style="text-decoration:none;color:var(--text-primary)">${s.problemTitle}</a>
+                <div style="display:flex;gap:0.5rem;margin-top:0.2rem">
+                  <span class="sub-lang">${s.language}</span>
+                  <span class="sub-lang">·</span>
+                  <span class="${isAccepted ? 'sub-status-accepted' : 'sub-status-wrong'}" style="font-size:0.75rem">${s.status}</span>
+                </div>
+              </div>
+            </div>
+            <span class="sub-time">${time}</span>
+          </div>
+        `;
+      }).join('');
+
+      // Use submission dates for heatmap
+      const dates = subSnap.docs.map(d => d.data().timestamp?.toDate?.() || new Date()).filter(Boolean);
+      generateHeatmap(dates.map(d => d.toDateString()));
+    }
+
+    if (subSnap.empty) generateHeatmap([]);
+
+  } catch (err) {
+    console.error('Profile error:', err);
+    generateHeatmap([]);
+  }
+}
+
+// ── Generate badges ──
+function generateBadges(data) {
+  const solved = (data.solved || []).length;
+  const score  = data.score || 0;
+
+  const allBadges = [
+    { icon: '🌱', name: 'First Step',   desc: 'Solved your first problem', earned: solved >= 1 },
+    { icon: '⚡', name: 'Quick Start',  desc: 'Solved 5 problems',          earned: solved >= 5 },
+    { icon: '🔥', name: 'On Fire',      desc: 'Solved 10 problems',         earned: solved >= 10 },
+    { icon: '💎', name: 'Diamond Coder',desc: 'Earned 100+ score',          earned: score >= 100 },
+    { icon: '🧠', name: 'Big Brain',    desc: 'Solved a Hard problem',      earned: (data.hardCount || 0) >= 1 },
+    { icon: '🏆', name: 'Champion',     desc: 'Earned 500+ score',          earned: score >= 500 },
+  ];
+
+  const el = document.getElementById('badges-list');
+  el.innerHTML = allBadges.map(b => `
+    <div style="
+      display:flex;align-items:center;gap:0.6rem;
+      padding:0.6rem 1rem;
+      border-radius:8px;
+      background:${b.earned ? 'rgba(108,99,255,0.1)' : 'var(--bg-secondary)'};
+      border:1px solid ${b.earned ? 'rgba(108,99,255,0.3)' : 'var(--border)'};
+      opacity:${b.earned ? '1' : '0.4'};
+      min-width:160px;
+    ">
+      <span style="font-size:1.4rem">${b.icon}</span>
+      <div>
+        <div style="font-size:0.85rem;font-weight:600;color:${b.earned ? 'var(--text-primary)' : 'var(--text-muted)'}">${b.name}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted)">${b.desc}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Require auth ──
+auth.onAuthStateChanged(user => {
+  if (!user) {
+    window.location.href = 'login.html';
+    return;
+  }
+  loadProfile(user);
+});
+</script>
+</body>
+</html>
